@@ -1,14 +1,41 @@
+import os
+import streamlit as st
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_groq import ChatGroq
 from tools import create_todo, list_todos, update_todos, delete_todo
-from dotenv import load_dotenv
 from database import init_db
 
-load_dotenv()
 init_db()
 
-llm = ChatGroq(model="openai/gpt-oss-20b")
+# ---------- Get API Key safely ----------
+def get_groq_api_key():
+    # 1. Try Streamlit Secrets first (for Streamlit Cloud)
+    try:
+        return st.secrets["GROQ_API_KEY"]
+    except Exception:
+        pass
+
+    # 2. Try environment variable
+    key = os.getenv("GROQ_API_KEY")
+    if key:
+        return key
+
+    # 3. Fail clearly
+    raise ValueError(
+        "GROQ_API_KEY not found!\n"
+        "→ On Streamlit Cloud: Add it in App Settings → Secrets\n"
+        "→ Locally: Put it in .env file"
+    )
+
+api_key = get_groq_api_key()
+
+llm = ChatGroq(
+    model="openai/gpt-oss-20b",
+    api_key=api_key,          # ← explicitly pass the key
+    temperature=0.3,
+)
+
 all_tools = [create_todo, list_todos, update_todos, delete_todo]
 
 SYSTEM_PROMPT = """You are a smart and friendly Todo Manager AI assistant.
